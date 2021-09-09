@@ -117,7 +117,7 @@ def configure_simulation(
         try:
             platform = omm.Platform_getPlatformByName("OpenCL")
             platform_properties = {"DeviceIndex": str(gpu_index)}
-        except:
+        except Exception:
             platform = omm.Platform_getPlatformByName("CPU")
             platform_properties = {}
 
