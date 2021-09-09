@@ -60,6 +60,7 @@ def configure_amber_explicit(
     heat_bath_friction_coef: float,
     platform: simtk.openmm.Platform,
     platform_properties: dict,
+    explicit_barostat: str,
 ) -> Tuple[simtk.openmm.app.Simulation, parmed.Structure]:
 
     # Configure system
@@ -76,7 +77,19 @@ def configure_amber_explicit(
         heat_bath_friction_coef / u.picosecond,
         dt_ps * u.picosecond,
     )
-    system.addForce(omm.MonteCarloBarostat(1 * u.bar, temperature_kelvin * u.kelvin))
+
+    if explicit_barostat == "MonteCarloBarostat":
+        system.addForce(
+            omm.MonteCarloBarostat(1 * u.bar, temperature_kelvin * u.kelvin)
+        )
+    elif explicit_barostat == "MonteCarloAnisotropicBarostat":
+        system.addForce(
+            omm.MonteCarloAnisotropicBarostat(
+                (1, 1, 1) * u.bar, temperature_kelvin * u.kelvin, False, False, True
+            )
+        )
+    else:
+        raise ValueError(f"Invalid explicit_barostat option: {explicit_barostat}")
 
     sim = app.Simulation(
         top.topology, system, integrator, platform, platform_properties
@@ -94,6 +107,7 @@ def configure_simulation(
     dt_ps: float,
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
+    explicit_barostat: str = "MonteCarloBarostat",
 ) -> simtk.openmm.app.Simulation:
     # Configure hardware
     try:
@@ -103,7 +117,7 @@ def configure_simulation(
         try:
             platform = omm.Platform_getPlatformByName("OpenCL")
             platform_properties = {"DeviceIndex": str(gpu_index)}
-        except:
+        except Exception:
             platform = omm.Platform_getPlatformByName("CPU")
             platform_properties = {}
 
@@ -129,6 +143,7 @@ def configure_simulation(
             heat_bath_friction_coef,
             platform,
             platform_properties,
+            explicit_barostat,
         )
 
     # Set simulation positions
