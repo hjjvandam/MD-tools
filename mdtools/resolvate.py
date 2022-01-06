@@ -87,6 +87,13 @@ def verify(pdb_file: str, top_file: str, mdp_file: str):
         process.wait()
 
 
+def validate_system(pdb_file: str, top_file: str):
+    try:
+        pmd.load_file(top_file, xyz=pdb_file)
+    except ValueError:
+        print(f"Error: \n\t{pdb_file}\n\t{top_file}\n")
+
+
 def resolvate(
     input_path: Path, output_path: Path, mdp_file: str, is_strip_water: bool = True
 ):
