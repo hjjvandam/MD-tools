@@ -14,7 +14,7 @@ def configure_amber_implicit(
     heat_bath_friction_coef: float,
     platform: "openmm.Platform",
     platform_properties: dict,
-) -> Tuple["openmm.app.Simulation", "parmed.Structure"]:
+) -> Tuple["app.Simulation", "parmed.Structure"]:
 
     # Configure system
     if top_file:
@@ -60,7 +60,7 @@ def configure_amber_explicit(
     platform: "openmm.Platform",
     platform_properties: dict,
     explicit_barostat: str,
-) -> Tuple["openmm.app.Simulation", "parmed.Structure"]:
+) -> Tuple["app.Simulation", "parmed.Structure"]:
 
     # Configure system
     top = parmed.load_file(top_file, xyz=pdb_file)
@@ -107,7 +107,7 @@ def configure_simulation(
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
     explicit_barostat: str = "MonteCarloBarostat",
-) -> "openmm.app.Simulation":
+) -> "app.Simulation":
     # Configure hardware
     try:
         platform = openmm.Platform_getPlatformByName("CUDA")
