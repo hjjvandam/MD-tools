@@ -1,10 +1,9 @@
 import random
 import parmed
 from typing import Optional, Tuple
-import simtk
-import simtk.unit as u
-import simtk.openmm as omm
-import simtk.openmm.app as app
+import openmm
+import openmm.unit as u
+import openmm.app as app
 
 
 def configure_amber_implicit(
@@ -13,9 +12,9 @@ def configure_amber_implicit(
     dt_ps: float,
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
-    platform: simtk.openmm.Platform,
+    platform: "openmm.Platform",
     platform_properties: dict,
-) -> Tuple[simtk.openmm.app.Simulation, parmed.Structure]:
+) -> Tuple["openmm.app.Simulation", "parmed.Structure"]:
 
     # Configure system
     if top_file:
@@ -37,7 +36,7 @@ def configure_amber_implicit(
         )
 
     # Congfigure integrator
-    integrator = omm.LangevinIntegrator(
+    integrator = openmm.LangevinIntegrator(
         temperature_kelvin * u.kelvin,
         heat_bath_friction_coef / u.picosecond,
         dt_ps * u.picosecond,
@@ -58,10 +57,10 @@ def configure_amber_explicit(
     dt_ps: float,
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
-    platform: simtk.openmm.Platform,
+    platform: "openmm.Platform",
     platform_properties: dict,
     explicit_barostat: str,
-) -> Tuple[simtk.openmm.app.Simulation, parmed.Structure]:
+) -> Tuple["openmm.app.Simulation", "parmed.Structure"]:
 
     # Configure system
     top = parmed.load_file(top_file, xyz=pdb_file)
@@ -72,7 +71,7 @@ def configure_amber_explicit(
     )
 
     # Congfigure integrator
-    integrator = omm.LangevinIntegrator(
+    integrator = openmm.LangevinIntegrator(
         temperature_kelvin * u.kelvin,
         heat_bath_friction_coef / u.picosecond,
         dt_ps * u.picosecond,
@@ -80,11 +79,11 @@ def configure_amber_explicit(
 
     if explicit_barostat == "MonteCarloBarostat":
         system.addForce(
-            omm.MonteCarloBarostat(1 * u.bar, temperature_kelvin * u.kelvin)
+            openmm.MonteCarloBarostat(1 * u.bar, temperature_kelvin * u.kelvin)
         )
     elif explicit_barostat == "MonteCarloAnisotropicBarostat":
         system.addForce(
-            omm.MonteCarloAnisotropicBarostat(
+            openmm.MonteCarloAnisotropicBarostat(
                 (1, 1, 1) * u.bar, temperature_kelvin * u.kelvin, False, False, True
             )
         )
@@ -108,17 +107,17 @@ def configure_simulation(
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
     explicit_barostat: str = "MonteCarloBarostat",
-) -> simtk.openmm.app.Simulation:
+) -> "openmm.app.Simulation":
     # Configure hardware
     try:
-        platform = omm.Platform_getPlatformByName("CUDA")
+        platform = openmm.Platform_getPlatformByName("CUDA")
         platform_properties = {"DeviceIndex": str(gpu_index), "CudaPrecision": "mixed"}
     except Exception:
         try:
-            platform = omm.Platform_getPlatformByName("OpenCL")
+            platform = openmm.Platform_getPlatformByName("OpenCL")
             platform_properties = {"DeviceIndex": str(gpu_index)}
         except Exception:
-            platform = omm.Platform_getPlatformByName("CPU")
+            platform = openmm.Platform_getPlatformByName("CPU")
             platform_properties = {}
 
     # Select implicit or explicit solvent configuration
