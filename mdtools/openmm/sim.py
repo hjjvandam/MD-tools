@@ -35,7 +35,7 @@ def configure_amber_implicit(
             constraints=app.HBonds,
         )
 
-    # Congfigure integrator
+    # Configure integrator
     integrator = openmm.LangevinIntegrator(
         temperature_kelvin * u.kelvin,
         heat_bath_friction_coef / u.picosecond,
