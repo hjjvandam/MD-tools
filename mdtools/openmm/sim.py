@@ -26,7 +26,7 @@ def configure_amber_implicit(
             implicitSolvent=app.OBC1,
         )
     else:
-        pdb = parmed.load_file(pdb_file)
+        pdb = app.PDBFile(pdb_file)
         forcefield = app.ForceField("amber99sbildn.xml", "amber99_obc.xml")
         system = forcefield.createSystem(
             pdb.topology,
