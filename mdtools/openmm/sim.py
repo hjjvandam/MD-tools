@@ -6,7 +6,7 @@ import openmm.unit as u
 import openmm.app as app
 
 
-def configure_amber_implicit(
+def _configure_amber_implicit(
     pdb_file: str,
     top_file: Optional[str],
     dt_ps: float,
@@ -57,7 +57,7 @@ def configure_amber_implicit(
     return sim
 
 
-def configure_amber_explicit(
+def _configure_amber_explicit(
     pdb_file: str,
     top_file: str,
     dt_ps: float,
@@ -115,7 +115,42 @@ def configure_simulation(
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
     explicit_barostat: str = "MonteCarloBarostat",
+    run_minimization: bool = True,
+    set_velocities: bool = True,
 ) -> "app.Simulation":
+    """Configure an OpenMM amber simulation.
+
+    Parameters
+    ----------
+    pdb_file : str
+        The PDB file to initialize the positions (and topology if
+        `top_file` is not present and the `solvent_type` is `implicit`).
+    top_file : Optional[str]
+        The topology file to initialize the systems topology.
+    solvent_type : str
+        Solvent type can be either `implicit` or `explicit`, if `explicit`
+        then `top_file` must be present.
+    gpu_index : int
+        The GPU index to use for the simulation.
+    dt_ps : float
+        The timestep to use for the simulation.
+    temperature_kelvin : float
+        The temperature to use for the simulation.
+    heat_bath_friction_coef : float
+        The heat bath friction coefficient to use for the simulation.
+    explicit_barostat : str, optional
+        The barostat used for an `explicit` solvent simulation can be either
+        "MonteCarloBarostat" by deafult, or "MonteCarloAnisotropicBarostat".
+    run_minimization : bool, optional
+        Whether or not to run energy minimization, by default True.
+    set_velocities : bool, optional
+        Whether or not to set velocities to temperature, by default True.
+
+    Returns
+    -------
+    app.Simulation
+        Configured OpenMM Simulation object.
+    """
     # Configure hardware
     try:
         platform = openmm.Platform_getPlatformByName("CUDA")
@@ -130,7 +165,7 @@ def configure_simulation(
 
     # Select implicit or explicit solvent configuration
     if solvent_type == "implicit":
-        sim = configure_amber_implicit(
+        sim = _configure_amber_implicit(
             pdb_file,
             top_file,
             dt_ps,
@@ -142,7 +177,7 @@ def configure_simulation(
     else:
         assert solvent_type == "explicit"
         assert top_file is not None
-        sim = configure_amber_explicit(
+        sim = _configure_amber_explicit(
             pdb_file,
             top_file,
             dt_ps,
@@ -154,9 +189,11 @@ def configure_simulation(
         )
 
     # Minimize energy and equilibrate
-    sim.minimizeEnergy()
-    sim.context.setVelocitiesToTemperature(
-        temperature_kelvin * u.kelvin, random.randint(1, 10000)
-    )
+    if run_minimization:
+        sim.minimizeEnergy()
+    if set_velocities:
+        sim.context.setVelocitiesToTemperature(
+            temperature_kelvin * u.kelvin, random.randint(1, 10000)
+        )
 
     return sim
