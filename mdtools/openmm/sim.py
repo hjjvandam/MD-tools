@@ -1,6 +1,6 @@
 import random
 import parmed
-from typing import Optional, Tuple
+from typing import Optional
 import openmm
 import openmm.unit as u
 import openmm.app as app
@@ -14,7 +14,7 @@ def configure_amber_implicit(
     heat_bath_friction_coef: float,
     platform: "openmm.Platform",
     platform_properties: dict,
-) -> Tuple["app.Simulation", "parmed.Structure"]:
+) -> "app.Simulation":
 
     # Configure system
     if top_file:
@@ -47,8 +47,14 @@ def configure_amber_implicit(
         pdb.topology, system, integrator, platform, platform_properties
     )
 
-    # Return simulation and handle to coordinates
-    return sim, pdb
+    # Set simulation positions
+    if top_file:
+        # If loading with parmed
+        sim.context.setPositions(pdb.positions)
+    else:
+        sim.context.setPositions(pdb.getPositions())
+
+    return sim
 
 
 def configure_amber_explicit(
@@ -60,7 +66,7 @@ def configure_amber_explicit(
     platform: "openmm.Platform",
     platform_properties: dict,
     explicit_barostat: str,
-) -> Tuple["app.Simulation", "parmed.Structure"]:
+) -> "app.Simulation":
 
     # Configure system
     top = parmed.load_file(top_file, xyz=pdb_file)
@@ -94,8 +100,10 @@ def configure_amber_explicit(
         top.topology, system, integrator, platform, platform_properties
     )
 
-    # Return simulation and handle to coordinates
-    return sim, top
+    # Set simulation positions
+    sim.context.setPositions(top.positions)
+
+    return sim
 
 
 def configure_simulation(
@@ -122,7 +130,7 @@ def configure_simulation(
 
     # Select implicit or explicit solvent configuration
     if solvent_type == "implicit":
-        sim, coords = configure_amber_implicit(
+        sim = configure_amber_implicit(
             pdb_file,
             top_file,
             dt_ps,
@@ -134,7 +142,7 @@ def configure_simulation(
     else:
         assert solvent_type == "explicit"
         assert top_file is not None
-        sim, coords = configure_amber_explicit(
+        sim = configure_amber_explicit(
             pdb_file,
             top_file,
             dt_ps,
@@ -144,13 +152,6 @@ def configure_simulation(
             platform_properties,
             explicit_barostat,
         )
-
-    # Set simulation positions
-    if coords.get_coordinates().shape[0] == 1:
-        sim.context.setPositions(coords.positions)
-    else:
-        positions = random.choice(coords.get_coordinates())
-        sim.context.setPositions(positions / 10)
 
     # Minimize energy and equilibrate
     sim.minimizeEnergy()
