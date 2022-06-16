@@ -1,6 +1,6 @@
 import random
 import parmed
-from typing import Optional
+from typing import Optional, Tuple
 import openmm
 import openmm.unit as u
 import openmm.app as app
@@ -14,12 +14,13 @@ def _configure_amber_implicit(
     heat_bath_friction_coef: float,
     platform: "openmm.Platform",
     platform_properties: dict,
-) -> "app.Simulation":
+) -> Tuple["app.Simulation", Optional["app.PDBFile"]]:
 
     # Configure system
     if top_file:
-        pdb = parmed.load_file(top_file, xyz=pdb_file)
-        system = pdb.createSystem(
+        pdb = None
+        top = parmed.load_file(top_file)
+        system = top.createSystem(
             nonbondedMethod=app.CutoffNonPeriodic,
             nonbondedCutoff=1.0 * u.nanometer,
             constraints=app.HBonds,
@@ -27,9 +28,10 @@ def _configure_amber_implicit(
         )
     else:
         pdb = app.PDBFile(pdb_file)
+        top = pdb.topology
         forcefield = app.ForceField("amber99sbildn.xml", "amber99_obc.xml")
         system = forcefield.createSystem(
-            pdb.topology,
+            top,
             nonbondedMethod=app.CutoffNonPeriodic,
             nonbondedCutoff=1.0 * u.nanometer,
             constraints=app.HBonds,
@@ -43,22 +45,14 @@ def _configure_amber_implicit(
     )
     integrator.setConstraintTolerance(0.00001)
 
-    sim = app.Simulation(
-        pdb.topology, system, integrator, platform, platform_properties
-    )
+    sim = app.Simulation(top, system, integrator, platform, platform_properties)
 
-    # Set simulation positions
-    if top_file:
-        # If loading with parmed
-        sim.context.setPositions(pdb.positions)
-    else:
-        sim.context.setPositions(pdb.getPositions())
-
-    return sim
+    # Returning the pdb file object for later use to reduce I/O.
+    # If a topology file is passed, the pdb variable is None.
+    return sim, pdb
 
 
 def _configure_amber_explicit(
-    pdb_file: str,
     top_file: str,
     dt_ps: float,
     temperature_kelvin: float,
@@ -69,7 +63,7 @@ def _configure_amber_explicit(
 ) -> "app.Simulation":
 
     # Configure system
-    top = parmed.load_file(top_file, xyz=pdb_file)
+    top = parmed.load_file(top_file)
     system = top.createSystem(
         nonbondedMethod=app.PME,
         nonbondedCutoff=1.0 * u.nanometer,
@@ -100,9 +94,6 @@ def _configure_amber_explicit(
         top.topology, system, integrator, platform, platform_properties
     )
 
-    # Set simulation positions
-    sim.context.setPositions(top.positions)
-
     return sim
 
 
@@ -116,6 +107,7 @@ def configure_simulation(
     heat_bath_friction_coef: float,
     explicit_barostat: str = "MonteCarloBarostat",
     run_minimization: bool = True,
+    set_positions: bool = True,
     set_velocities: bool = True,
 ) -> "app.Simulation":
     """Configure an OpenMM amber simulation.
@@ -143,6 +135,8 @@ def configure_simulation(
         "MonteCarloBarostat" by deafult, or "MonteCarloAnisotropicBarostat".
     run_minimization : bool, optional
         Whether or not to run energy minimization, by default True.
+    set_positions : bool, optional
+        Whether or not to set positions (Loads the PDB file), by default True.
     set_velocities : bool, optional
         Whether or not to set velocities to temperature, by default True.
 
@@ -165,7 +159,7 @@ def configure_simulation(
 
     # Select implicit or explicit solvent configuration
     if solvent_type == "implicit":
-        sim = _configure_amber_implicit(
+        sim, pdb = _configure_amber_implicit(
             pdb_file,
             top_file,
             dt_ps,
@@ -177,8 +171,8 @@ def configure_simulation(
     else:
         assert solvent_type == "explicit"
         assert top_file is not None
+        pdb = None
         sim = _configure_amber_explicit(
-            pdb_file,
             top_file,
             dt_ps,
             temperature_kelvin,
@@ -188,9 +182,17 @@ def configure_simulation(
             explicit_barostat,
         )
 
+    # Set the positions
+    if set_positions:
+        if pdb is None:
+            pdb = app.PDBFile(pdb_file)
+        sim.context.setPositions(pdb.getPositions())
+
     # Minimize energy and equilibrate
     if run_minimization:
         sim.minimizeEnergy()
+
+    # Set velocities to temperature
     if set_velocities:
         sim.context.setVelocitiesToTemperature(
             temperature_kelvin * u.kelvin, random.randint(1, 10000)
