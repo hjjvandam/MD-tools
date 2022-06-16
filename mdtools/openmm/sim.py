@@ -1,14 +1,17 @@
 import random
 import parmed
-from typing import Optional, Tuple
+from pathlib import Path
+from typing import Optional, Tuple, Union
 import openmm
 import openmm.unit as u
 import openmm.app as app
 
+PathLike = Union[str, Path]
+
 
 def _configure_amber_implicit(
-    pdb_file: str,
-    top_file: Optional[str],
+    pdb_file: PathLike,
+    top_file: Optional[PathLike],
     dt_ps: float,
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
@@ -17,9 +20,9 @@ def _configure_amber_implicit(
 ) -> Tuple["app.Simulation", Optional["app.PDBFile"]]:
 
     # Configure system
-    if top_file:
+    if top_file is not None:
         pdb = None
-        top = parmed.load_file(top_file)
+        top = parmed.load_file(str(top_file))
         system = top.createSystem(
             nonbondedMethod=app.CutoffNonPeriodic,
             nonbondedCutoff=1.0 * u.nanometer,
@@ -27,7 +30,7 @@ def _configure_amber_implicit(
             implicitSolvent=app.OBC1,
         )
     else:
-        pdb = app.PDBFile(pdb_file)
+        pdb = app.PDBFile(str(pdb_file))
         top = pdb.topology
         forcefield = app.ForceField("amber99sbildn.xml", "amber99_obc.xml")
         system = forcefield.createSystem(
@@ -53,7 +56,7 @@ def _configure_amber_implicit(
 
 
 def _configure_amber_explicit(
-    top_file: str,
+    top_file: PathLike,
     dt_ps: float,
     temperature_kelvin: float,
     heat_bath_friction_coef: float,
@@ -63,7 +66,7 @@ def _configure_amber_explicit(
 ) -> "app.Simulation":
 
     # Configure system
-    top = parmed.load_file(top_file)
+    top = parmed.load_file(str(top_file))
     system = top.createSystem(
         nonbondedMethod=app.PME,
         nonbondedCutoff=1.0 * u.nanometer,
@@ -98,8 +101,8 @@ def _configure_amber_explicit(
 
 
 def configure_simulation(
-    pdb_file: str,
-    top_file: Optional[str],
+    pdb_file: PathLike,
+    top_file: Optional[PathLike],
     solvent_type: str,
     gpu_index: int,
     dt_ps: float,
@@ -114,10 +117,10 @@ def configure_simulation(
 
     Parameters
     ----------
-    pdb_file : str
+    pdb_file : PathLike
         The PDB file to initialize the positions (and topology if
         `top_file` is not present and the `solvent_type` is `implicit`).
-    top_file : Optional[str]
+    top_file : Optional[PathLike]
         The topology file to initialize the systems topology.
     solvent_type : str
         Solvent type can be either `implicit` or `explicit`, if `explicit`
@@ -185,7 +188,7 @@ def configure_simulation(
     # Set the positions
     if set_positions:
         if pdb is None:
-            pdb = app.PDBFile(pdb_file)
+            pdb = app.PDBFile(str(pdb_file))
         sim.context.setPositions(pdb.getPositions())
 
     # Minimize energy and equilibrate
