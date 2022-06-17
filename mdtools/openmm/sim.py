@@ -1,5 +1,6 @@
 import random
-import parmed
+
+# import parmed
 from pathlib import Path
 from typing import Optional, Tuple, Union
 import openmm
@@ -22,7 +23,8 @@ def _configure_amber_implicit(
     # Configure system
     if top_file is not None:
         pdb = None
-        top = parmed.load_file(str(top_file))
+        # top = parmed.load_file(str(top_file))
+        top = app.AmberPrmtopFile(str(top_file))
         system = top.createSystem(
             nonbondedMethod=app.CutoffNonPeriodic,
             nonbondedCutoff=1.0 * u.nanometer,
@@ -66,7 +68,14 @@ def _configure_amber_explicit(
 ) -> "app.Simulation":
 
     # Configure system
-    top = parmed.load_file(str(top_file))
+    # top = parmed.load_file(str(top_file))
+    # system = top.createSystem(
+    #     nonbondedMethod=app.PME,
+    #     nonbondedCutoff=1.0 * u.nanometer,
+    #     constraints=app.HBonds,
+    # )
+
+    top = app.AmberPrmtopFile(str(top_file))
     system = top.createSystem(
         nonbondedMethod=app.PME,
         nonbondedCutoff=1.0 * u.nanometer,
