@@ -14,6 +14,9 @@ from mdtools.writers import (
 
 
 def wrap(atoms):
+    '''
+    Wrap atom positions so they stay inside the simulation box
+    '''
     def wrap_nsp10_16(positions):
         # update the positions
         atoms.positions = positions
@@ -50,10 +53,10 @@ class OfflineReporter:
 
         if fraction_of_contacts and reference_pdb_file is None:
             raise ValueError(
-                "Computing `fraction_of_contacts` requires `refernce_pdb_file`."
+                "Computing `fraction_of_contacts` requires `reference_pdb_file`."
             )
         if contact_map and reference_pdb_file is None:
-            raise ValueError("Computing `contact_map` requires `refernce_pdb_file`.")
+            raise ValueError("Computing `contact_map` requires `reference_pdb_file`.")
 
         self._file_idx = 0
         self._base_name = file
