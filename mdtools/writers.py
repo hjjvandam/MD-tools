@@ -54,7 +54,7 @@ def write_contact_map(
         "contact_map",
         data=data,
         dtype=h5py.vlen_dtype(np.dtype("int16")),
-        fletcher32=True,
+        fletcher32=False,
         chunks=(1,) + data.shape[1:],
     )
 
@@ -65,7 +65,7 @@ def write_contact_map(
             "contact_map_values",
             data=data,
             dtype=h5py.vlen_dtype(np.dtype("float32")),
-            fletcher32=True,
+            fletcher32=False,
             chunks=(1,) + data.shape[1:],
         )
 
